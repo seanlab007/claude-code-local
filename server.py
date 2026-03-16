@@ -46,12 +46,20 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 # OpenClaw integration
-OPENCLAW_BASE_URL = os.getenv("OPENCLAW_BASE_URL", "http://localhost:3000")
+# 官方文档: POST http://127.0.0.1:18789/v1/chat/completions
+# 认证: Authorization: Bearer <OPENCLAW_GATEWAY_TOKEN>
+OPENCLAW_BASE_URL = os.getenv("OPENCLAW_BASE_URL", "http://127.0.0.1:18789")
 OPENCLAW_GATEWAY_TOKEN = os.getenv("OPENCLAW_GATEWAY_TOKEN", "")
+OPENCLAW_AGENT_ID = os.getenv("OPENCLAW_AGENT_ID", "main")
 
-# WorkBuddy integration
-WORKBUDDY_BASE_URL = os.getenv("WORKBUDDY_BASE_URL", "http://localhost:4000")
-WORKBUDDY_API_KEY = os.getenv("WORKBUDDY_API_KEY", "")
+# WorkBuddy integration (腾讯版 OpenClaw，API 完全兼容)
+# 官方文档: POST http://127.0.0.1:18789/v1/chat/completions
+# 认证: Authorization: Bearer <WORKBUDDY_GATEWAY_TOKEN>
+# model 字段: "openclaw:main" 或 "openclaw:<agentId>"
+WORKBUDDY_BASE_URL = os.getenv("WORKBUDDY_BASE_URL", "http://127.0.0.1:18789")
+WORKBUDDY_GATEWAY_TOKEN = os.getenv("WORKBUDDY_GATEWAY_TOKEN", "")
+WORKBUDDY_API_KEY = os.getenv("WORKBUDDY_API_KEY", "")  # 兼容旧版配置
+WORKBUDDY_AGENT_ID = os.getenv("WORKBUDDY_AGENT_ID", "main")
 
 # Model mapping
 BIG_MODEL = os.getenv("BIG_MODEL", "claude-sonnet-4-5")
@@ -389,13 +397,25 @@ async def _proxy_to_workbuddy(
     body: dict, model: str, messages: list, system: str,
     max_tokens: int, temperature: float, stream: bool
 ):
-    """Proxy to WorkBuddy API."""
-    if not WORKBUDDY_API_KEY:
-        raise HTTPException(status_code=401, detail="WORKBUDDY_API_KEY not configured")
+    """Proxy to WorkBuddy API (腾讯版 OpenClaw，API 完全兼容).
+    
+    WorkBuddy 使用与 OpenClaw 完全相同的 API 格式：
+    - 端点: POST /v1/chat/completions (默认端口 18789)
+    - 认证: Authorization: Bearer <token>
+    - 模型: "openclaw:main" 或 "openclaw:<agentId>"
+    """
+    token = WORKBUDDY_GATEWAY_TOKEN or WORKBUDDY_API_KEY
+    if not token:
+        raise HTTPException(
+            status_code=401,
+            detail="WorkBuddy token not configured. Set WORKBUDDY_GATEWAY_TOKEN in .env"
+        )
 
+    # WorkBuddy 使用 Bearer token 认证（与 OpenClaw 相同）
     headers = {
-        "X-API-Key": WORKBUDDY_API_KEY,
+        "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
+        "x-openclaw-agent-id": WORKBUDDY_AGENT_ID,  # 指定 agent
     }
 
     openai_messages = []
@@ -403,8 +423,11 @@ async def _proxy_to_workbuddy(
         openai_messages.append({"role": "system", "content": system})
     openai_messages.extend(anthropic_to_openai_messages(messages))
 
+    # WorkBuddy/OpenClaw 的 model 字段格式: "openclaw:<agentId>"
+    wb_model = f"openclaw:{WORKBUDDY_AGENT_ID}"
+
     workbuddy_body = {
-        "model": model,
+        "model": wb_model,
         "messages": openai_messages,
         "max_tokens": max_tokens,
         "temperature": temperature,
@@ -437,33 +460,78 @@ async def _proxy_to_workbuddy(
 @app.get("/integrations/openclaw/status")
 async def openclaw_status():
     """Check OpenClaw gateway connectivity."""
-    if not OPENCLAW_GATEWAY_TOKEN:
-        return {"status": "not_configured", "message": "OPENCLAW_GATEWAY_TOKEN not set"}
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(
-                f"{OPENCLAW_BASE_URL}/health",
-                headers={"Authorization": f"Bearer {OPENCLAW_GATEWAY_TOKEN}"},
-            )
-            return {"status": "connected", "url": OPENCLAW_BASE_URL, "response": resp.status_code}
-    except Exception as e:
-        return {"status": "error", "url": OPENCLAW_BASE_URL, "error": str(e)}
+    token = OPENCLAW_GATEWAY_TOKEN
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    port_results = {}
+    for port in [18789, 18790, 3000]:
+        url = f"http://127.0.0.1:{port}"
+        try:
+            async with httpx.AsyncClient(timeout=2) as client:
+                try:
+                    r = await client.get(f"{url}/health", headers=headers)
+                    port_results[str(port)] = {"reachable": True, "status": r.status_code}
+                    continue
+                except Exception:
+                    pass
+                r = await client.get(f"{url}/v1/models", headers=headers)
+                port_results[str(port)] = {"reachable": True, "status": r.status_code}
+        except httpx.ConnectError:
+            port_results[str(port)] = {"reachable": False, "error": "Connection refused"}
+        except Exception as e:
+            port_results[str(port)] = {"reachable": False, "error": str(e)}
+    any_reachable = any(v.get("reachable") for v in port_results.values())
+    return {
+        "status": "connected" if any_reachable else "disconnected",
+        "token_configured": bool(token),
+        "configured_url": OPENCLAW_BASE_URL,
+        "agent_id": OPENCLAW_AGENT_ID,
+        "port_scan": port_results,
+        "api_endpoint": "POST /v1/chat/completions",
+        "auth_header": "Authorization: Bearer <OPENCLAW_GATEWAY_TOKEN>",
+        "model_format": "openclaw:main",
+    }
 
 
 @app.get("/integrations/workbuddy/status")
 async def workbuddy_status():
-    """Check WorkBuddy API connectivity."""
-    if not WORKBUDDY_API_KEY:
-        return {"status": "not_configured", "message": "WORKBUDDY_API_KEY not set"}
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(
-                f"{WORKBUDDY_BASE_URL}/health",
-                headers={"X-API-Key": WORKBUDDY_API_KEY},
-            )
-            return {"status": "connected", "url": WORKBUDDY_BASE_URL, "response": resp.status_code}
-    except Exception as e:
-        return {"status": "error", "url": WORKBUDDY_BASE_URL, "error": str(e)}
+    """Check WorkBuddy API connectivity (兼容 OpenClaw API)."""
+    token = WORKBUDDY_GATEWAY_TOKEN or WORKBUDDY_API_KEY
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    # 检测多个可能的端口
+    results = {}
+    for port in [18789, 18790, 3000, 4000]:
+        url = f"http://127.0.0.1:{port}"
+        try:
+            async with httpx.AsyncClient(timeout=2) as client:
+                # 先试 /health
+                try:
+                    r = await client.get(f"{url}/health", headers=headers)
+                    results[str(port)] = {"reachable": True, "status": r.status_code, "path": "/health"}
+                    continue
+                except Exception:
+                    pass
+                # 再试 /v1/models
+                r = await client.get(f"{url}/v1/models", headers=headers)
+                results[str(port)] = {"reachable": True, "status": r.status_code, "path": "/v1/models"}
+        except httpx.ConnectError:
+            results[str(port)] = {"reachable": False, "error": "Connection refused"}
+        except Exception as e:
+            results[str(port)] = {"reachable": False, "error": str(e)}
+    
+    configured_port = WORKBUDDY_BASE_URL.split(":")[-1].rstrip("/")
+    configured_status = results.get(configured_port, {"reachable": False, "error": "Not scanned"})
+    any_reachable = any(v.get("reachable") for v in results.values())
+    return {
+        "status": "connected" if configured_status.get("reachable") else ("port_found" if any_reachable else "disconnected"),
+        "configured_url": WORKBUDDY_BASE_URL,
+        "agent_id": WORKBUDDY_AGENT_ID,
+        "token_configured": bool(token),
+        "port_scan": results,
+        "api_endpoint": "POST /v1/chat/completions",
+        "auth_header": "Authorization: Bearer <WORKBUDDY_GATEWAY_TOKEN>",
+        "model_format": "openclaw:main",
+        "note": "WorkBuddy 兼容 OpenClaw API，默认端口 18789",
+    }
 
 
 # ─── OpenClaw Webhook (receive messages from OpenClaw) ────────────────────────
@@ -492,11 +560,42 @@ async def workbuddy_webhook(request: Request):
     return {"status": "ok", "received": True}
 
 
-# ─── Entry Point ──────────────────────────────────────────────────────────────
+# ─── 诊断端口扫描 ──────────────────────────────────────────────────────────────────────────────
+
+@app.get("/debug/scan-ports")
+async def scan_ports():
+    """扫描本地常见 AI 服务端口，帮助定位 WorkBuddy/OpenClaw 实际监听端口"""
+    port_map = {
+        "workbuddy_openclaw_default": [18789, 18790],
+        "ollama":                     [11434],
+        "lm_studio":                  [1234],
+        "open_webui":                 [3000, 8080],
+        "this_proxy":                 [PROXY_PORT],
+    }
+    results = {}
+    async with httpx.AsyncClient(timeout=1.5) as client:
+        for name, port_list in port_map.items():
+            for p in port_list:
+                try:
+                    r = await client.get(f"http://127.0.0.1:{p}/")
+                    results[f"{name}:{p}"] = {"reachable": True, "status": r.status_code}
+                except httpx.ConnectError:
+                    results[f"{name}:{p}"] = {"reachable": False, "error": "Connection refused"}
+                except Exception as e:
+                    results[f"{name}:{p}"] = {"reachable": False, "error": type(e).__name__}
+    reachable_ports = [k for k, v in results.items() if v.get("reachable")]
+    return {
+        "scan_results": results,
+        "reachable_ports": reachable_ports,
+        "workbuddy_hint": "WorkBuddy 默认端口为 18789，如果运行中应该在此处显示为 reachable",
+    }
+
+
+# ─── Entry Point ──────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     logger.info(f"Starting Claude Code Local Proxy on {PROXY_HOST}:{PROXY_PORT}")
     logger.info(f"Provider: {PREFERRED_PROVIDER}")
     logger.info(f"OpenClaw: {OPENCLAW_BASE_URL} (token: {'set' if OPENCLAW_GATEWAY_TOKEN else 'not set'})")
-    logger.info(f"WorkBuddy: {WORKBUDDY_BASE_URL} (key: {'set' if WORKBUDDY_API_KEY else 'not set'})")
+    logger.info(f"WorkBuddy: {WORKBUDDY_BASE_URL} (token: {'set' if (WORKBUDDY_GATEWAY_TOKEN or WORKBUDDY_API_KEY) else 'not set'})")
     uvicorn.run(app, host=PROXY_HOST, port=PROXY_PORT, log_level="info")
