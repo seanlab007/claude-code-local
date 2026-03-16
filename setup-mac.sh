@@ -205,6 +205,10 @@ APPEOF
 
 chmod +x "$LAUNCH_SCRIPT"
 
+# ── 安装漂亮图标 ─────────────────────────────────────────────
+echo -e "${BLUE}[+] 安装桌面图标...${NC}"
+bash "$SCRIPT_DIR/shortcuts/install-icon.sh" 2>/dev/null || true
+
 echo ""
 echo -e "${GREEN}${BOLD}╔══════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}${BOLD}║           🎉 安装完成！                          ║${NC}"
