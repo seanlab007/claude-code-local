@@ -5,7 +5,13 @@
   },
   "agents": {
     "defaults": {
-      "model": "deepseek/deepseek-chat"
+      "model": {
+        "primary": "deepseek/deepseek-chat",
+        "fallbacks": [
+          "zhipu/glm-4-flash",
+          "groq/llama-3.3-70b-versatile"
+        ]
+      }
     }
   },
   "commands": {
@@ -33,12 +39,12 @@
     "providers": {
       "deepseek": {
         "baseUrl": "https://api.deepseek.com/v1",
-        "apiKey": "sk-981846fa644848c8a41aeff541c4184b",
+        "apiKey": "${PROVIDER_API_KEY}",
         "api": "openai-completions",
         "models": [
           {
             "id": "deepseek-chat",
-            "name": "DeepSeek Chat (V3)",
+            "name": "DeepSeek V3 (Chat)",
             "reasoning": false,
             "input": [
               "text"
@@ -54,7 +60,7 @@
           },
           {
             "id": "deepseek-reasoner",
-            "name": "DeepSeek Reasoner (R1)",
+            "name": "DeepSeek R1 (Reasoner)",
             "reasoning": true,
             "input": [
               "text"
@@ -67,6 +73,116 @@
             },
             "contextWindow": 65536,
             "maxTokens": 8192
+          }
+        ]
+      },
+      "zhipu": {
+        "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
+        "apiKey": "${PROVIDER_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "glm-4-flash",
+            "name": "GLM-4 Flash (Free)",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 131072,
+            "maxTokens": 4096
+          },
+          {
+            "id": "glm-4-plus",
+            "name": "GLM-4 Plus",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0.7,
+              "output": 0.7,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 131072,
+            "maxTokens": 4096
+          },
+          {
+            "id": "glm-z1-flash",
+            "name": "GLM-Z1 Flash (Reasoning, Free)",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 131072,
+            "maxTokens": 4096
+          }
+        ]
+      },
+      "groq": {
+        "baseUrl": "https://api.groq.com/openai/v1",
+        "apiKey": "${PROVIDER_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "llama-3.3-70b-versatile",
+            "name": "Llama 3.3 70B (Groq)",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0.59,
+              "output": 0.79,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 131072,
+            "maxTokens": 32768
+          },
+          {
+            "id": "meta-llama/llama-4-scout-17b-16e-instruct",
+            "name": "Llama 4 Scout 17B (Groq)",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0.11,
+              "output": 0.34,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 131072,
+            "maxTokens": 8192
+          },
+          {
+            "id": "qwen/qwen3-32b",
+            "name": "Qwen3 32B (Groq)",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0.29,
+              "output": 0.59,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 131072,
+            "maxTokens": 40960
           }
         ]
       }

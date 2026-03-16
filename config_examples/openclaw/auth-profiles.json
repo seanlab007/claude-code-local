@@ -1,11 +1,25 @@
 {
   "version": 1,
   "profiles": {
-    "openai:manual": {
-      "id": "openai:manual",
-      "provider": "openai",
+    "deepseek:manual": {
+      "id": "deepseek:manual",
+      "provider": "deepseek",
       "type": "api_key",
-      "token": "sk-981846fa644848c8a41aeff541c4184b",
+      "token": "${DEEPSEEK_API_KEY}",
+      "createdAt": "2026-03-16T10:00:00.000Z"
+    },
+    "zhipu:manual": {
+      "id": "zhipu:manual",
+      "provider": "zhipu",
+      "type": "api_key",
+      "token": "${ZHIPU_API_KEY}",
+      "createdAt": "2026-03-16T10:00:00.000Z"
+    },
+    "groq:manual": {
+      "id": "groq:manual",
+      "provider": "groq",
+      "type": "api_key",
+      "token": "${GROQ_API_KEY}",
       "createdAt": "2026-03-16T10:00:00.000Z"
     }
   }
