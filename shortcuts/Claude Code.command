@@ -56,7 +56,20 @@ if ! command -v python3 &>/dev/null; then
     brew install python
 fi
 
-# ── 检查并安装 Claude Code CLI ──────────────────────────────
+# # ── 修复 npm 全局安装权限（避免 EACCES 错误）───────────────────────────────
+NPM_PREFIX="$HOME/.npm-global"
+if [ ! -d "$NPM_PREFIX" ]; then
+    mkdir -p "$NPM_PREFIX"
+    npm config set prefix "$NPM_PREFIX"
+    # 写入 PATH 到 .zprofile 和 .bash_profile
+    for RC in ~/.zprofile ~/.bash_profile; do
+        grep -q 'npm-global' "$RC" 2>/dev/null || \
+            echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> "$RC"
+    done
+fi
+export PATH="$NPM_PREFIX/bin:$PATH"
+
+# ── 检查并安装 Claude Code CLI ──────────────────────────
 if ! command -v claude &>/dev/null; then
     echo -e "${YELLOW}📦 安装 Claude Code CLI...${NC}"
     npm install -g @anthropic-ai/claude-code
@@ -127,7 +140,7 @@ config = {
             },
             "groq": {
                 "baseUrl": "https://api.groq.com/openai/v1",
-                "apiKey": "${_GROQ_KEY}",
+                "apiKey": "GROQ_KEY_PLACEHOLDER",
                 "api": "openai-completions",
                 "models": [
                     {"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B (Groq)", "reasoning": False, "input": ["text"],
@@ -150,7 +163,7 @@ auth = {
         "zhipu:manual": {"id": "zhipu:manual", "provider": "zhipu", "type": "api_key",
                           "token": "394303a081e64ed18eef8adfc35bd110.VckzW4eRTHUKN27c", "createdAt": "2026-03-16T10:00:00.000Z"},
         "groq:manual": {"id": "groq:manual", "provider": "groq", "type": "api_key",
-                         "token": "${_GROQ_KEY}", "createdAt": "2026-03-16T10:00:00.000Z"}
+                         "token": "GROQ_KEY_PLACEHOLDER", "createdAt": "2026-03-16T10:00:00.000Z"}
     }
 }
 
@@ -159,6 +172,11 @@ with open(os.path.expanduser('~/.openclaw/agents/main/agent/auth-profiles.json')
 
 print("  ✅ OpenClaw 配置完成")
 PYEOF
+
+    # 将 placeholder 替换为真实 Groq Key
+    sed -i '' "s|GROQ_KEY_PLACEHOLDER|${_GROQ_KEY}|g" \
+        "$HOME/.openclaw/openclaw.json" \
+        "$HOME/.openclaw/agents/main/agent/auth-profiles.json" 2>/dev/null || true
 fi
 
 # ── 停止旧进程 ───────────────────────────────────────────────
