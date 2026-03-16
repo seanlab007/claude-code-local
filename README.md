@@ -29,7 +29,53 @@ Claude Code CLI
 └─────────────────────────────────────────────┘
 ```
 
-## 快速开始
+## 🍎 Mac 一键快速开始（推荐）
+
+### 第一次使用：一键安装所有依赖
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/seanlab007/claude-code-local.git
+cd claude-code-local
+
+# 2. 一键安装（Homebrew / Node.js / Python / Claude Code CLI / OpenClaw / 所有 API Key）
+bash setup-mac.sh
+```
+
+安装完成后，桌面会自动出现 **Claude Code.command** 快捷方式，**双击即可启动**。
+
+### 日常使用：三种启动方式
+
+**方式 A — 双击桌面快捷方式（最简单）**
+
+```
+双击 ~/Desktop/Claude Code.command
+```
+
+**方式 B — 创建 .app 应用图标**
+
+```bash
+bash create-mac-app.sh
+# 桌面出现 Claude Code.app，双击即可
+```
+
+**方式 C — 命令行后台启动**
+
+```bash
+bash launch.sh                          # 后台启动所有服务
+source ~/.claude-code-local/env.sh      # 设置环境变量
+claude                                  # 开始使用！
+```
+
+**停止所有服务**
+
+```bash
+bash stop.sh
+```
+
+---
+
+## 快速开始（其他平台）
 
 ### 方式一：Python 直接运行
 
