@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  claude-proxy:
+    build: .
+    # Or use pre-built image:
+    # image: ghcr.io/seanlab007/claude-code-local:latest
+    container_name: claude-code-proxy
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${PROXY_PORT:-8082}:8082"
+    networks:
+      - claude-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8082/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  claude-net:
+    driver: bridge
