@@ -1,0 +1,75 @@
+{
+  "meta": {
+    "lastTouchedVersion": "2026.3.11",
+    "lastTouchedAt": "2026-03-16T14:36:52.871Z"
+  },
+  "agents": {
+    "defaults": {
+      "model": "deepseek/deepseek-chat"
+    }
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "restart": true,
+    "ownerDisplay": "raw"
+  },
+  "gateway": {
+    "mode": "local",
+    "bind": "loopback",
+    "auth": {
+      "token": "330543fc7feb96696bfa231f7bca954bf5a834bca85bf7c041c41fe507f01649"
+    },
+    "http": {
+      "endpoints": {
+        "chatCompletions": {
+          "enabled": true
+        }
+      }
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "deepseek": {
+        "baseUrl": "https://api.deepseek.com/v1",
+        "apiKey": "sk-981846fa644848c8a41aeff541c4184b",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "deepseek-chat",
+            "name": "DeepSeek Chat (V3)",
+            "reasoning": false,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0.27,
+              "output": 1.1,
+              "cacheRead": 0.07,
+              "cacheWrite": 0.27
+            },
+            "contextWindow": 65536,
+            "maxTokens": 8192
+          },
+          {
+            "id": "deepseek-reasoner",
+            "name": "DeepSeek Reasoner (R1)",
+            "reasoning": true,
+            "input": [
+              "text"
+            ],
+            "cost": {
+              "input": 0.55,
+              "output": 2.19,
+              "cacheRead": 0.14,
+              "cacheWrite": 0.55
+            },
+            "contextWindow": 65536,
+            "maxTokens": 8192
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "profiles": {
+    "openai:manual": {
+      "id": "openai:manual",
+      "provider": "openai",
+      "type": "api_key",
+      "token": "sk-981846fa644848c8a41aeff541c4184b",
+      "createdAt": "2026-03-16T10:00:00.000Z"
+    }
+  }
+}
